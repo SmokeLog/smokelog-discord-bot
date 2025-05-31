@@ -1,9 +1,10 @@
 /**
  * -----------------------------------------------------------
- * SmokeLog - Slash Command Handler
+ * SmokeLog - Slash & Context Interaction Handler
  * -----------------------------------------------------------
  *
- * Description: Executes registered slash commands when used.
+ * Description: Executes slash and context menu commands with
+ *              error handling and autocomplete support.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -15,7 +16,7 @@
  * -----------------------------------------------------------
  */
 
-const { Events } = require("discord.js");
+const { Events, ApplicationCommandType } = require("discord.js");
 
 module.exports = {
   name: Events.InteractionCreate,
@@ -23,37 +24,51 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // ✅ Handle autocomplete interactions
+    // ✅ Handle autocomplete
     if (
       interaction.isAutocomplete() &&
       typeof command.autocomplete === "function"
     ) {
       try {
         await command.autocomplete(interaction);
-      } catch (error) {
-        console.error("❌ Autocomplete error:", error);
+      } catch (err) {
+        console.error("❌ Autocomplete Error:", err);
       }
       return;
     }
 
-    // ✅ Handle slash command interactions
+    // ✅ Handle slash commands
     if (interaction.isChatInputCommand()) {
-      try {
-        await command.execute(interaction);
-      } catch (error) {
-        console.error("❌ Command error:", error);
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({
-            content: "❌ There was an error while executing this command.",
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: "❌ There was an error while executing this command.",
-            ephemeral: true,
-          });
-        }
-      }
+      return handleExecution(interaction, command, "slash command");
     }
+
+    // ✅ Handle message context menu commands
+    if (
+      interaction.isMessageContextMenuCommand?.() ||
+      interaction.commandType === ApplicationCommandType.Message
+    ) {
+      return handleExecution(interaction, command, "context menu");
+    }
+
+    // You can add user context menu or modal submit handling here as needed.
   },
 };
+
+// 🔁 Shared execution handler
+async function handleExecution(interaction, command, typeLabel = "command") {
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(`❌ ${typeLabel} error:`, error);
+    const reply = {
+      content: `❌ There was an error while executing this ${typeLabel}.`,
+      ephemeral: true,
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(reply);
+    } else {
+      await interaction.reply(reply);
+    }
+  }
+}
