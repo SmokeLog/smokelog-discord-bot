@@ -3,8 +3,8 @@
  * SmokeLog - Slash & Context Interaction Handler
  * -----------------------------------------------------------
  *
- * Description: Executes slash and context menu commands with
- *              error handling and autocomplete support.
+ * Description: Executes slash, context menu, and verification
+ *              modal interactions with error handling.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -17,10 +17,14 @@
  */
 
 const { Events, ApplicationCommandType } = require("discord.js");
+const handleVerificationModal = require("./onboarding/verificationModalPanel");
 
 module.exports = {
   name: Events.InteractionCreate,
   async execute(interaction) {
+    // 🔐 Handle verification modal & button interactions
+    await handleVerificationModal(interaction);
+
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
@@ -49,8 +53,6 @@ module.exports = {
     ) {
       return handleExecution(interaction, command, "context menu");
     }
-
-    // You can add user context menu or modal submit handling here as needed.
   },
 };
 

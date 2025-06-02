@@ -28,6 +28,7 @@ const resources = require("../events/onboarding/resourcesMessage");
 const postSupportPanel = require("../events/onboarding/supportPanel");
 const postBugPanel = require("../events/onboarding/bugPanel");
 const postSuggestionPanel = require("../events/onboarding/suggestionPanel");
+const postVerificationPanel = require("../events/onboarding/verificationPanel");
 const { loadReminders } = require("../utils/reminderStore");
 
 module.exports = {
@@ -67,5 +68,6 @@ module.exports = {
     await postSupportPanel(client);
     await postBugPanel(client);
     await postSuggestionPanel(client);
+    await postVerificationPanel(client);
   },
 };

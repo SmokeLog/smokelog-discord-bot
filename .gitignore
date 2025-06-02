@@ -10,6 +10,12 @@ package-lock.json
 .env
 
 # --------------------------
+# Firebase private keys
+# --------------------------
+*.json
+!data/*.json
+
+# --------------------------
 # Logs and caches
 # --------------------------
 logs/
@@ -37,8 +43,3 @@ build/
 # --------------------------
 .DS_Store
 Thumbs.db
-
-# --------------------------
-# Local data files
-# --------------------------
-data/*.json
