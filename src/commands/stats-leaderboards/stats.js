@@ -18,6 +18,7 @@
 
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { db } = require("../../lib/firebase");
+const logger = require("../../utils/logger");
 const dayjs = require("dayjs");
 const minMax = require("dayjs/plugin/minMax");
 dayjs.extend(minMax);
@@ -51,7 +52,7 @@ module.exports = {
   },
 
   async execute(interaction) {
-    await interaction.deferReply(); // public reply
+    await interaction.deferReply();
 
     const inputUsername = interaction.options.getString("username");
 
@@ -109,6 +110,11 @@ module.exports = {
     const userDoc = await getUserDoc();
 
     if (!userDoc) {
+      logger.warning(
+        `❌ User not found or not verified: ${
+          inputUsername || interaction.user.tag
+        }`
+      );
       return interaction.editReply({
         content: "🚫 User not found or not verified.",
         flags: 64,
@@ -164,11 +170,9 @@ module.exports = {
 
     const getStatsBlock = (type, label) => {
       const data = stats[type];
-
       const minDate = dayjs.min(data.dates);
       const maxDate = dayjs.max(data.dates);
       const days = minDate && maxDate ? maxDate.diff(minDate, "day") + 1 : 1;
-
       const avg = data.count / days;
 
       return (
@@ -189,9 +193,13 @@ module.exports = {
           getStatsBlock("Cart", "Carts"),
         ].join("\n\n")
       )
-      .setFooter({ text: "SmokeLog Bot" })
+      .setFooter({
+        text: "SmokeLog Bot",
+        iconURL: interaction.client.user.displayAvatarURL(),
+      })
       .setTimestamp();
 
+    logger.success(`📈 ${interaction.user.tag} viewed stats for ${username}`);
     await interaction.editReply({ embeds: [embed] });
   },
 };

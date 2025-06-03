@@ -75,7 +75,7 @@ module.exports = {
         { name: "Quoted User", value: `<@${quote.authorId}>`, inline: true },
         { name: "Saved By", value: `<@${quote.quotedById}>`, inline: true }
       )
-      .setColor(0x00b06b)
+      .setColor(0x1e90ff)
       .setFooter({
         text: "SmokeLog Bot",
         iconURL: interaction.client.user.displayAvatarURL(),

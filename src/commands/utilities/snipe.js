@@ -31,7 +31,9 @@ module.exports = {
 
     if (!snipe) {
       logger.info(
-        `❌ /snipe used in #${interaction.channel.name} by ${interaction.user.tag} - nothing to snipe.`
+        `❌ /snipe used in #${interaction.channel?.name || "unknown"} by ${
+          interaction.user.tag
+        } - nothing to snipe.`
       );
       return interaction.reply({
         content: "❌ There's nothing to snipe in this channel!",
@@ -40,13 +42,13 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
+      .setTitle("💬 Deleted Message")
+      .setDescription(`${snipe.content}\n\n**Mention:** <@${snipe.authorId}>`)
+      .setColor(0x1e90ff)
       .setAuthor({
         name: snipe.authorTag,
         iconURL: snipe.avatarURL,
       })
-      .setTitle("💬 Deleted Message")
-      .setDescription(`${snipe.content}\n\n**Mention:** <@${snipe.authorId}>`)
-      .setColor(0xff5555)
       .setFooter({
         text: "SmokeLog Bot",
         iconURL: interaction.client.user.displayAvatarURL(),
@@ -58,7 +60,9 @@ module.exports = {
     }
 
     logger.success(
-      `📎 /snipe used in #${interaction.channel.name} by ${interaction.user.tag} - showing message from ${snipe.authorTag}`
+      `📎 /snipe used in #${interaction.channel?.name || "unknown"} by ${
+        interaction.user.tag
+      } - showing message from ${snipe.authorTag}`
     );
 
     clearSnipe(interaction.channel.id);

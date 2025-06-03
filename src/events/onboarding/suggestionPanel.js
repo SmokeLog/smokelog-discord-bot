@@ -59,7 +59,10 @@ module.exports = async function postSuggestionPanel(client) {
       "Help us improve SmokeLog!\nUse the buttons below to submit your idea. A private ticket will be created for review."
     )
     .setColor(config.EMBED_COLOR)
-    .setFooter({ text: "SmokeLog Suggestions" })
+    .setFooter({
+      text: "SmokeLog Suggestions",
+      iconURL: client.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

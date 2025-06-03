@@ -56,7 +56,10 @@ module.exports = async function postVerificationPanel(client) {
       "Click the button below and enter your verification code from the [SmokeLog website](https://www.smokelog.org/discord) to verify your Discord account."
     )
     .setColor(config.EMBED_COLOR)
-    .setFooter({ text: "Verification powered by SmokeLog" })
+    .setFooter({
+      text: "Verification powered by SmokeLog",
+      iconURL: client.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

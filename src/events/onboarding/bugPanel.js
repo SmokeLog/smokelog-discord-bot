@@ -46,12 +46,15 @@ module.exports = async function postBugPanel(client) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle("🐞 Report Bugs, Errors, or Typos")
+    .setTitle("🐛 Report Bugs, Errors, or Typos")
     .setDescription(
       "Encountered a bug, error message, or noticed a typo?\nUse the buttons below to quickly submit a report. A private ticket will be created for you."
     )
     .setColor(config.EMBED_COLOR)
-    .setFooter({ text: "SmokeLog Bug Reporter" })
+    .setFooter({
+      text: "SmokeLog Bug Reporter",
+      iconURL: client.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

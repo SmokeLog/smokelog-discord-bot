@@ -62,7 +62,10 @@ module.exports = async function postSupportPanel(client) {
       "Click the button below to submit a private support request. A staff member will follow up in a private channel."
     )
     .setColor(config.EMBED_COLOR)
-    .setFooter({ text: "Support powered by SmokeLog" })
+    .setFooter({
+      text: "Support powered by SmokeLog",
+      iconURL: client.user.displayAvatarURL(),
+    })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
