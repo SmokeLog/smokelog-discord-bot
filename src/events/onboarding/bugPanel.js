@@ -19,28 +19,11 @@ const {
 
 const config = require("../../config");
 const logger = require("../../utils/logger");
-const {
-  markPosted,
-  getPostedMessageId,
-  clearPosted,
-} = require("../../utils/messageCache");
+const { markPosted } = require("../../utils/messageCache");
 
 module.exports = async function postBugPanel(client) {
   const panelKey = "BUG_REPORT_PANEL";
   const channel = await client.channels.fetch(config.CHANNELS.BUGS);
-
-  // Check cache for previous panel
-  const previousMessageId = getPostedMessageId(panelKey);
-  if (previousMessageId) {
-    try {
-      const oldMsg = await channel.messages.fetch(previousMessageId);
-      await oldMsg.delete();
-      logger.warning(`Deleted cached bug panel (ID: ${oldMsg.id})`);
-      clearPosted(panelKey); // clear cache
-    } catch (err) {
-      logger.warning("Cached bug panel not found or already deleted.");
-    }
-  }
 
   // Double protection: Delete any duplicates within the last 10 messages
   const recentMessages = await channel.messages.fetch({ limit: 10 });
