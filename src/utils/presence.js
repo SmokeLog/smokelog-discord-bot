@@ -4,7 +4,7 @@
  * -----------------------------------------------------------
  *
  * Description: Handles bot status and activity (rich presence)
- *              setup and rotation for the Discord bot.
+ *              setup and randomized rotation for the Discord bot.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -16,33 +16,34 @@
  * -----------------------------------------------------------
  */
 
-const statuses = [
-  { name: "Heating the quartz 🔥", type: 0 }, // Playing
-  { name: "Packing a fat bowl 🍚", type: 0 }, // Playing
-  { name: "a sesh playlist 🎶", type: 2 }, // Listening
-  { name: "the clouds roll in ☁️", type: 3 }, // Watching
-  { name: "Rolling one up 🌯", type: 0 }, // Playing
-  { name: "BRB taking a dab 🫡", type: 0 }, // Playing
-  { name: "the leaderboard get baked 🥇", type: 3 }, // Watching
-  { name: "Trying not to cough 😶‍🌫️", type: 0 }, // Playing
-];
+const logger = require("../utils/logger");
+const presences = require("../../data/presences.json");
 
-let current = 0;
+function getRandomPresence() {
+  if (!Array.isArray(presences) || presences.length === 0) return null;
+  const entry = presences[Math.floor(Math.random() * presences.length)];
+  return entry?.name && typeof entry.type === "number" ? entry : null;
+}
 
 function rotatePresence(client) {
   if (!client || !client.user) return;
 
-  const status = statuses[current % statuses.length];
+  const presence = getRandomPresence();
+  if (!presence) {
+    logger.warning("⛔ No valid presence entries available.");
+    return;
+  }
+
   client.user.setPresence({
-    activities: [status],
+    activities: [{ name: presence.name, type: presence.type }],
     status: "online",
   });
 
-  current++;
+  logger.info(`🎯 Rotated presence to: ${presence.name}`);
 }
 
 function startPresenceRotation(client, interval = 1800000) {
-  rotatePresence(client); // Set initial
+  rotatePresence(client); // Set initial presence
   setInterval(() => rotatePresence(client), interval);
 }
 
