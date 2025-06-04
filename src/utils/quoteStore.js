@@ -3,8 +3,8 @@
  * SmokeLog - Utility: Quote Store
  * -----------------------------------------------------------
  *
- * Description: Temporarily stores saved quotes for use with
- *              the /quote view subcommand.
+ * Description: Stores saved quotes for use with the
+ *              /quote view and /quote delete subcommands.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -47,13 +47,13 @@ function saveQuotesToFile() {
   }
 }
 
-// Save a quote
+// Save a new quote
 function saveQuote(quote) {
   quotes.push(quote);
   saveQuotesToFile();
 }
 
-// Get random quote (channel + optional user)
+// Get a random quote (with optional user filter)
 function getRandomQuote({ guildId, channelId, userId = null }) {
   const filtered = quotes.filter(
     (q) =>
@@ -66,10 +66,29 @@ function getRandomQuote({ guildId, channelId, userId = null }) {
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
+// Delete a quote by its ID
+function deleteQuoteById(id) {
+  const index = quotes.findIndex((q) => q.id === id);
+  if (index === -1) return false;
+
+  quotes.splice(index, 1);
+  saveQuotesToFile();
+  return true;
+}
+
+// Get all quote IDs for a specific channel (used in autocomplete)
+function getAllQuoteIds(guildId, channelId) {
+  return quotes
+    .filter((q) => q.guildId === guildId && q.channelId === channelId)
+    .map((q) => q.id);
+}
+
 // Init on import
 loadQuotes();
 
 module.exports = {
   saveQuote,
   getRandomQuote,
+  deleteQuoteById,
+  getAllQuoteIds,
 };
