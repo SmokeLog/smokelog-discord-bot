@@ -57,14 +57,16 @@ module.exports = {
     ),
 
   async autocomplete(interaction) {
-    const sub = interaction.options.getSubcommand();
+    if (!interaction.isAutocomplete()) return;
+
+    const sub = interaction.options.getSubcommand(false);
     if (sub !== "delete") return;
 
-    const focused = interaction.options.getFocused();
+    const focused = interaction.options.getFocused(true);
     const allIds = getAllQuoteIds(interaction.guild.id, interaction.channel.id);
 
     const filtered = allIds
-      .filter((id) => id.includes(focused))
+      .filter((id) => id.includes(focused.value))
       .slice(0, 25)
       .map((id) => ({ name: id, value: id }));
 
