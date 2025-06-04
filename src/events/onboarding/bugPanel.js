@@ -29,6 +29,20 @@ module.exports = async function postBugPanel(client) {
   const panelKey = "BUG_REPORT_PANEL";
   const channel = await client.channels.fetch(config.CHANNELS.BUGS);
 
+  // Check cache for previous panel
+  const previousMessageId = getPostedMessageId(panelKey);
+  if (previousMessageId) {
+    try {
+      const oldMsg = await channel.messages.fetch(previousMessageId);
+      await oldMsg.delete();
+      logger.warning(`Deleted cached bug panel (ID: ${oldMsg.id})`);
+      clearPosted(panelKey); // clear cache
+    } catch (err) {
+      logger.warning("Cached bug panel not found or already deleted.");
+    }
+  }
+
+  // Double protection: Delete any duplicates within the last 10 messages
   const recentMessages = await channel.messages.fetch({ limit: 10 });
   const duplicates = recentMessages.filter(
     (msg) =>
@@ -45,6 +59,7 @@ module.exports = async function postBugPanel(client) {
     }
   }
 
+  // Post the new panel
   const embed = new EmbedBuilder()
     .setTitle("🐛 Report Bugs, Errors, or Typos")
     .setDescription(
@@ -62,12 +77,10 @@ module.exports = async function postBugPanel(client) {
       .setCustomId("reportBug")
       .setLabel("🐛 Report Bug")
       .setStyle(ButtonStyle.Danger),
-
     new ButtonBuilder()
       .setCustomId("reportError")
       .setLabel("🚨 Report Error")
       .setStyle(ButtonStyle.Secondary),
-
     new ButtonBuilder()
       .setCustomId("reportTypo")
       .setLabel("✏️ Report Typo")
@@ -79,6 +92,6 @@ module.exports = async function postBugPanel(client) {
     components: [row],
   });
 
-  markPosted(panelKey, sent.id);
+  markPosted(panelKey, sent.id); // ✅ update cache
   logger.success(`✅ Posted bug panel in #${channel.name}`);
 };
