@@ -21,6 +21,7 @@ const {
   ApplicationCommandType,
   EmbedBuilder,
 } = require("discord.js");
+const { v4: uuidv4 } = require("uuid");
 
 const logger = require("../../utils/logger");
 const { saveQuote } = require("../../utils/quoteStore");
@@ -45,6 +46,7 @@ module.exports = {
     );
 
     const quote = {
+      id: uuidv4(),
       content: message.content || "*[image only]*",
       authorId: message.author.id,
       authorTag: message.author.tag,
@@ -73,7 +75,8 @@ module.exports = {
       )
       .addFields(
         { name: "Quoted User", value: `<@${quote.authorId}>`, inline: true },
-        { name: "Saved By", value: `<@${quote.quotedById}>`, inline: true }
+        { name: "Saved By", value: `<@${quote.quotedById}>`, inline: true },
+        { name: "Quote ID", value: quote.id, inline: false }
       )
       .setColor(0x1e90ff)
       .setFooter({
