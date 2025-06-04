@@ -20,7 +20,9 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+const express = require("express");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
+
 const config = require("./config");
 const logger = require("./utils/logger");
 const handleError = require("./utils/errorHandler");
@@ -33,9 +35,19 @@ const client = new Client({
   ],
 });
 
+// Set client for logger embeds
+logger.setDiscordClient(client, process.env.LOG_CHANNEL_ID);
+
+const app = express();
+app.get("/", (_, res) => res.send("SmokeLog Bot is running."));
+app.listen(process.env.PORT || 3000, () => {
+  logger.info("Express server running for Railway.");
+});
+
 // Load slash commands
 client.commands = new Collection();
 const foldersPath = path.join(__dirname, "commands");
+
 if (fs.existsSync(foldersPath)) {
   const commandFolders = fs.readdirSync(foldersPath);
   for (const folder of commandFolders) {
@@ -51,7 +63,7 @@ if (fs.existsSync(foldersPath)) {
   }
 }
 
-// Load all events
+// Load event handlers recursively
 const loadEvents = (dir) => {
   const files = fs.readdirSync(dir, { withFileTypes: true });
   for (const file of files) {
@@ -72,19 +84,20 @@ const loadEvents = (dir) => {
 };
 loadEvents(path.join(__dirname, "events"));
 
-// Startup log
+// Startup logs
 logger.info(`${config.BOT_NAME} v${config.VERSION} starting...`);
 logger.info(`Environment: ${config.ENVIRONMENT}`);
 
-// Login
+// Login to Discord
 client
   .login(process.env.DISCORD_TOKEN)
-  .catch((error) => handleError(error, "Login Error"));
+  .then(() => logger.success("✅ Successfully logged into Discord"))
+  .catch((error) => handleError(error, "❌ Failed to log in"));
 
+// Global error handling
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled Promise Rejection: " + reason);
 });
-
 process.on("uncaughtException", (err) => {
   logger.error("Uncaught Exception: " + err.stack);
 });
