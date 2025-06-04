@@ -42,6 +42,15 @@ module.exports = {
       )
       .addFields(
         {
+          name: "📊 Stats & Leaderboards",
+          value:
+            "`/stats` – View your own or another user's session stats\n" +
+            "`/leaderboards` – Show the top users overall\n" +
+            "`/leaderboards concentrates` – Top concentrate users\n" +
+            "`/leaderboards flower` – Top flower users\n" +
+            "`/leaderboards carts` – Top cart users",
+        },
+        {
           name: "🧠 Reminders",
           value:
             "`/remindme in` – Set a reminder in a duration (e.g. 10m)\n" +
@@ -53,7 +62,8 @@ module.exports = {
         {
           name: "🔍 Message Tools",
           value:
-            "`/snipe` – View the most recently deleted message in a channel",
+            "`/snipe` – View the most recently deleted message in a channel\n" +
+            "`Quote (Right-Click > Apps > Quote)` – Save a message for later, then view it later with `/quote view`",
         }
       )
       .setFooter({
