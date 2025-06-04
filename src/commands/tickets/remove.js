@@ -46,7 +46,7 @@ module.exports = {
     if (channel.type !== ChannelType.GuildText) {
       return interaction.reply({
         content: "❌ This command can only be used in text channels.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -68,7 +68,7 @@ module.exports = {
       logger.error(`Failed to remove user from ticket: ${err.message}`);
       await interaction.reply({
         content: "❌ Failed to remove user from the ticket.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   }),

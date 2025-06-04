@@ -54,7 +54,7 @@ module.exports = {
       logger.error(`Failed to initiate ticket close: ${err.message}`);
       await interaction.followUp({
         content: "❌ Failed to close the ticket.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   }),

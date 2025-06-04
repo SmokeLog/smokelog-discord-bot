@@ -56,7 +56,7 @@ module.exports = {
           content: user
             ? `❌ No quotes found for **${user.tag}**.`
             : "❌ No quotes found.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
