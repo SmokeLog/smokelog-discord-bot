@@ -117,23 +117,19 @@ module.exports = {
             inline: true,
           },
           {
-            name: "Original Date",
-            value: `<t:${Math.floor(
-              new Date(quote.createdAt || Date.now()).getTime() / 1000
-            )}:F>`,
+            name: "Original Message",
+            value: `[Jump to message](https://discord.com/channels/${quote.guildId}/${quote.channelId}/${quote.messageId})`,
             inline: true,
-          },
-          {
-            name: "Quote ID",
-            value: quote.id || "N/A",
-            inline: false,
           }
         )
         .setFooter({
           text: "SmokeLog Bot",
           iconURL: interaction.client.user.displayAvatarURL(),
         })
+        .setTimestamp(new Date(quote.quotedAt || Date.now()))
         .setColor(0x00b06b);
+
+      if (quote.image) embed.setImage(quote.image);
 
       logger.success(
         `📌 /quote view used in #${interaction.channel.name} by ${interaction.user.tag} - retrieved quote from ${quote.authorTag}`
@@ -170,7 +166,7 @@ module.exports = {
       );
 
       return interaction.reply({
-        content: `✅ Quote with ID \`${quoteId}\` deleted successfully.`,
+        content: `✅ Quote deleted successfully.`,
         flags: 64,
       });
     }

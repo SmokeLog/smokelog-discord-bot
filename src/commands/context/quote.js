@@ -60,7 +60,7 @@ module.exports = {
       image: image?.url || null,
     };
 
-    saveQuote(quote);
+    await saveQuote(quote);
 
     logger.success(
       `📝 ${interaction.user.tag} quoted a message from ${message.author.tag} in #${message.channel.name}`
@@ -75,8 +75,7 @@ module.exports = {
       )
       .addFields(
         { name: "Quoted User", value: `<@${quote.authorId}>`, inline: true },
-        { name: "Saved By", value: `<@${quote.quotedById}>`, inline: true },
-        { name: "Quote ID", value: quote.id, inline: false }
+        { name: "Saved By", value: `<@${quote.quotedById}>`, inline: true }
       )
       .setColor(0x1e90ff)
       .setFooter({
