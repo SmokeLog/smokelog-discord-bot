@@ -6,7 +6,7 @@
  * Description: View or delete saved quotes.
  *              `/quote view` shows a random quote (optionally filtered by user)
  *              `/quote delete` allows staff to delete quotes by ID.
- *              Supports autocomplete for IDs.
+ *              Supports autocomplete with content previews.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -19,13 +19,12 @@
  */
 
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-
 const config = require("../../config");
 const logger = require("../../utils/logger");
 const {
   getRandomQuote,
   deleteQuoteById,
-  getAllQuoteIds,
+  getAllQuotesInChannel,
 } = require("../../utils/quoteStore");
 
 module.exports = {
@@ -58,17 +57,22 @@ module.exports = {
 
   async autocomplete(interaction) {
     if (!interaction.isAutocomplete()) return;
-
     const sub = interaction.options.getSubcommand(false);
     if (sub !== "delete") return;
 
-    const focused = interaction.options.getFocused(true);
-    const allIds = getAllQuoteIds(interaction.guild.id, interaction.channel.id);
+    const focused = interaction.options.getFocused(true).value.toLowerCase();
+    const quotes = getAllQuotesInChannel(interaction.guild.id, interaction.channel.id);
 
-    const filtered = allIds
-      .filter((id) => id.includes(focused.value))
+    const filtered = quotes
+      .filter((q) =>
+        q.id.toLowerCase().includes(focused) ||
+        q.content.toLowerCase().includes(focused)
+      )
       .slice(0, 25)
-      .map((id) => ({ name: id, value: id }));
+      .map((q) => ({
+        name: `${q.content.slice(0, 80)} (${q.id.slice(0, 8)}...)`,
+        value: q.id,
+      }));
 
     await interaction.respond(filtered);
   },
@@ -99,18 +103,14 @@ module.exports = {
       }
 
       const embed = new EmbedBuilder()
-        .setAuthor({
-          name: quote.authorTag,
-        })
+        .setAuthor({ name: quote.authorTag })
         .setTitle("📌 Saved Quote")
         .setDescription(`"${quote.content}"`)
         .addFields(
           { name: "Quoted by", value: `<@${quote.quotedById}>`, inline: true },
           {
             name: "Original Date",
-            value: `<t:${Math.floor(
-              new Date(quote.createdAt).getTime() / 1000
-            )}:F>`,
+            value: `<t:${Math.floor(new Date(quote.createdAt).getTime() / 1000)}:F>`,
             inline: true,
           },
           {
