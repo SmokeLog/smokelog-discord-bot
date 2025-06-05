@@ -297,7 +297,9 @@ module.exports = {
     }
 
     if (sub === "view") {
-      const userReminders = getReminders().filter((r) => r.userId === userId);
+      const userReminders = (await getReminders()).filter(
+        (r) => r.userId === userId
+      );
       if (userReminders.length === 0) {
         return interaction.reply({
           embeds: [
@@ -334,7 +336,9 @@ module.exports = {
 
     if (sub === "cancel") {
       const id = interaction.options.getString("reminder");
-      const userReminders = getReminders().filter((r) => r.userId === userId);
+      const userReminders = (await getReminders()).filter(
+        (r) => r.userId === userId
+      );
       const reminder = userReminders.find((r) => r.id === id);
 
       if (!reminder) {
@@ -389,7 +393,7 @@ module.exports = {
     const userId = interaction.user.id;
 
     if (interaction.options.getSubcommand() === "cancel") {
-      const reminders = getReminders()
+      const reminders = (await getReminders())
         .filter((r) => r.userId === userId)
         .slice(0, 25);
 
