@@ -23,7 +23,6 @@ const {
   scheduleReminder,
   getReminders,
   removeReminder,
-  saveReminders,
 } = require("../../utils/reminderStore");
 const logger = require("../../utils/logger");
 
@@ -168,10 +167,11 @@ module.exports = {
       }
 
       const remindAt = Date.now() + msValue;
-      const id = scheduleReminder(
+      const id = await scheduleReminder(
         { userId, channelId, remindAt, message },
         client
       );
+
       logger.success(
         `⏰ ${interaction.user.tag} set reminder in ${duration} (${id})`
       );
@@ -201,13 +201,13 @@ module.exports = {
         });
       }
 
-      const remindAt = new Date(
+      const dateObj = new Date(
         `${dateStr}T${parsed.hour.toString().padStart(2, "0")}:${parsed.minute
           .toString()
           .padStart(2, "0")}:00`
-      ).getTime();
+      );
 
-      if (isNaN(remindAt) || remindAt <= Date.now()) {
+      if (isNaN(dateObj.getTime()) || dateObj <= new Date()) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
@@ -222,10 +222,12 @@ module.exports = {
         });
       }
 
-      const id = scheduleReminder(
+      const remindAt = dateObj.getTime();
+      const id = await scheduleReminder(
         { userId, channelId, remindAt, message },
         client
       );
+
       logger.success(
         `📅 ${interaction.user.tag} set reminder for ${dateStr} ${timeStr} (${id})`
       );
@@ -261,16 +263,16 @@ module.exports = {
       }
 
       const now = new Date();
-      const remindAt = new Date(
+      const dateObj = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),
         parsed.hour,
         parsed.minute,
         0
-      ).getTime();
+      );
 
-      if (isNaN(remindAt) || remindAt <= Date.now()) {
+      if (isNaN(dateObj.getTime()) || dateObj <= new Date()) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
@@ -285,10 +287,12 @@ module.exports = {
         });
       }
 
-      const id = scheduleReminder(
+      const remindAt = dateObj.getTime();
+      const id = await scheduleReminder(
         { userId, channelId, remindAt, message },
         client
       );
+
       logger.success(
         `⏱️ ${interaction.user.tag} set reminder at ${timeStr} today (${id})`
       );
@@ -297,10 +301,11 @@ module.exports = {
     }
 
     if (sub === "view") {
-      const userReminders = (await getReminders()).filter(
+      const reminders = (await getReminders()).filter(
         (r) => r.userId === userId
       );
-      if (userReminders.length === 0) {
+
+      if (reminders.length === 0) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
@@ -314,7 +319,7 @@ module.exports = {
         });
       }
 
-      const formatted = userReminders
+      const formatted = reminders
         .map(
           (r, i) =>
             `\`${i + 1}.\` <t:${Math.floor(r.remindAt / 1000)}:R> – ${
@@ -336,10 +341,10 @@ module.exports = {
 
     if (sub === "cancel") {
       const id = interaction.options.getString("reminder");
-      const userReminders = (await getReminders()).filter(
-        (r) => r.userId === userId
+      const reminders = await getReminders();
+      const reminder = reminders.find(
+        (r) => r.userId === userId && r.id === id
       );
-      const reminder = userReminders.find((r) => r.id === id);
 
       if (!reminder) {
         return interaction.reply({
@@ -356,31 +361,15 @@ module.exports = {
         });
       }
 
-      const success = removeReminder(reminder.id);
+      await removeReminder(reminder.id);
 
-      if (success) {
-        logger.success(`🗑️ ${interaction.user.tag} cancelled reminder ${id}`);
-        return interaction.reply({
-          embeds: [
-            reminderEmbed(
-              {
-                title: "✅ Reminder Cancelled",
-                description: `Reminder for **${reminder.message}** was cancelled.`,
-              },
-              client
-            ),
-          ],
-        });
-      }
-
-      logger.error(`❌ ${interaction.user.tag} failed to cancel reminder`);
+      logger.success(`🗑️ ${interaction.user.tag} cancelled reminder ${id}`);
       return interaction.reply({
         embeds: [
           reminderEmbed(
             {
-              title: "❌ Failed",
-              description: "Could not cancel that reminder.",
-              color: 0xff4c4c,
+              title: "✅ Reminder Cancelled",
+              description: `Reminder for **${reminder.message}** was cancelled.`,
             },
             client
           ),
@@ -390,26 +379,25 @@ module.exports = {
   },
 
   async autocomplete(interaction) {
-    const userId = interaction.user.id;
+    if (interaction.options.getSubcommand() !== "cancel") return;
 
-    if (interaction.options.getSubcommand() === "cancel") {
-      const reminders = (await getReminders())
-        .filter((r) => r.userId === userId)
-        .slice(0, 25);
+    const reminders = (await getReminders()).filter(
+      (r) => r.userId === interaction.user.id
+    );
 
-      const focused = interaction.options.getFocused(true);
-      const choices = reminders.map((r) => ({
+    const focused = interaction.options.getFocused(true);
+    const choices = reminders
+      .slice(0, 25)
+      .map((r) => ({
         name: `${r.message || "*No message*"} – ${new Date(
           r.remindAt
         ).toLocaleString()}`,
         value: r.id,
-      }));
-
-      await interaction.respond(
-        choices.filter((choice) =>
-          choice.name.toLowerCase().includes(focused.value.toLowerCase())
-        )
+      }))
+      .filter((choice) =>
+        choice.name.toLowerCase().includes(focused.value.toLowerCase())
       );
-    }
+
+    await interaction.respond(choices);
   },
 };
