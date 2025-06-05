@@ -27,7 +27,7 @@ module.exports = {
     .setDMPermission(false),
 
   async execute(interaction) {
-    const snipe = getSnipe(interaction.channel.id);
+    const snipe = await getSnipe(interaction.channel.id); // ✅ await here
 
     if (!snipe) {
       logger.info(
@@ -43,7 +43,11 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle("💬 Deleted Message")
-      .setDescription(`${snipe.content}\n\n**Mention:** <@${snipe.authorId}>`)
+      .setDescription(
+        `${snipe.content || "*No content*"}\n\n**Mention:** <@${
+          snipe.authorId || "unknown"
+        }>`
+      )
       .setColor(0x1e90ff)
       .setAuthor({
         name: snipe.authorTag || "Unknown User",
@@ -65,7 +69,7 @@ module.exports = {
       } - showing message from ${snipe.authorTag}`
     );
 
-    clearSnipe(interaction.channel.id);
+    await clearSnipe(interaction.channel.id); // ✅ await here too
 
     return interaction.reply({ embeds: [embed] });
   },
