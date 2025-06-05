@@ -63,7 +63,7 @@ function handleReminderCreated(interaction, remindAt, message, id, label) {
           title: `${label} Reminder Set!`,
           description: `I'll remind you ${
             label === "⏰" ? "in" : "on"
-          } **${message}** at ${formatTimestamp(remindAt)}.`,
+          } **${formatTimestamp(remindAt)}**.\n\n**Message:** ${message}`,
         },
         interaction.client
       ),
@@ -172,7 +172,6 @@ module.exports = {
         { userId, channelId, remindAt, message },
         client
       );
-      saveReminders();
       logger.success(
         `⏰ ${interaction.user.tag} set reminder in ${duration} (${id})`
       );
@@ -227,7 +226,6 @@ module.exports = {
         { userId, channelId, remindAt, message },
         client
       );
-      saveReminders();
       logger.success(
         `📅 ${interaction.user.tag} set reminder for ${dateStr} ${timeStr} (${id})`
       );
@@ -291,7 +289,6 @@ module.exports = {
         { userId, channelId, remindAt, message },
         client
       );
-      saveReminders();
       logger.success(
         `⏱️ ${interaction.user.tag} set reminder at ${timeStr} today (${id})`
       );
@@ -356,7 +353,6 @@ module.exports = {
       }
 
       const success = removeReminder(reminder.id);
-      saveReminders();
 
       if (success) {
         logger.success(`🗑️ ${interaction.user.tag} cancelled reminder ${id}`);
