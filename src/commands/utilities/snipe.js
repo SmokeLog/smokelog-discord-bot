@@ -46,14 +46,14 @@ module.exports = {
       .setDescription(`${snipe.content}\n\n**Mention:** <@${snipe.authorId}>`)
       .setColor(0x1e90ff)
       .setAuthor({
-        name: snipe.authorTag,
-        iconURL: snipe.avatarURL,
+        name: snipe.authorTag || "Unknown User",
+        iconURL: snipe.avatarURL || undefined,
       })
       .setFooter({
         text: "SmokeLog Bot",
         iconURL: interaction.client.user.displayAvatarURL(),
       })
-      .setTimestamp(snipe.createdAt);
+      .setTimestamp(new Date(snipe.createdAt || Date.now()));
 
     if (snipe.image) {
       embed.setImage(snipe.image);
