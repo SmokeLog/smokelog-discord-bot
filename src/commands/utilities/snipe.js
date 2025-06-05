@@ -27,13 +27,11 @@ module.exports = {
     .setDMPermission(false),
 
   async execute(interaction) {
-    const snipe = await getSnipe(interaction.channel.id); // ✅ await here
+    const snipe = await getSnipe(interaction.channel.id);
 
     if (!snipe) {
       logger.info(
-        `❌ /snipe used in #${interaction.channel?.name || "unknown"} by ${
-          interaction.user.tag
-        } - nothing to snipe.`
+        `❌ /snipe used in #${interaction.channel?.name || "unknown"} by ${interaction.user.tag} - nothing to snipe.`
       );
       return interaction.reply({
         content: "❌ There's nothing to snipe in this channel!",
@@ -41,13 +39,12 @@ module.exports = {
       });
     }
 
+    const timestamp = new Date(snipe.createdAt);
+    const validTimestamp = !isNaN(timestamp.getTime());
+
     const embed = new EmbedBuilder()
       .setTitle("💬 Deleted Message")
-      .setDescription(
-        `${snipe.content || "*No content*"}\n\n**Mention:** <@${
-          snipe.authorId || "unknown"
-        }>`
-      )
+      .setDescription(`${snipe.content || "*No content*"}\n\n**Mention:** <@${snipe.authorId || "unknown"}>`)
       .setColor(0x1e90ff)
       .setAuthor({
         name: snipe.authorTag || "Unknown User",
@@ -56,20 +53,21 @@ module.exports = {
       .setFooter({
         text: "SmokeLog Bot",
         iconURL: interaction.client.user.displayAvatarURL(),
-      })
-      .setTimestamp(new Date(snipe.createdAt || Date.now()));
+      });
+
+    if (validTimestamp) {
+      embed.setTimestamp(timestamp);
+    }
 
     if (snipe.image) {
       embed.setImage(snipe.image);
     }
 
     logger.success(
-      `📎 /snipe used in #${interaction.channel?.name || "unknown"} by ${
-        interaction.user.tag
-      } - showing message from ${snipe.authorTag}`
+      `📎 /snipe used in #${interaction.channel?.name || "unknown"} by ${interaction.user.tag} - showing message from ${snipe.authorTag}`
     );
 
-    await clearSnipe(interaction.channel.id); // ✅ await here too
+    await clearSnipe(interaction.channel.id);
 
     return interaction.reply({ embeds: [embed] });
   },
