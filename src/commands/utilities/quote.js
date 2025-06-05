@@ -106,6 +106,11 @@ module.exports = {
         });
       }
 
+      const quotedAt =
+        quote.quotedAt && typeof quote.quotedAt.toDate === "function"
+          ? quote.quotedAt.toDate()
+          : new Date();
+
       const embed = new EmbedBuilder()
         .setAuthor({ name: quote.authorTag || "Unknown User" })
         .setTitle("📌 Saved Quote")
@@ -126,7 +131,7 @@ module.exports = {
           text: "SmokeLog Bot",
           iconURL: interaction.client.user.displayAvatarURL(),
         })
-        .setTimestamp(new Date(quote.quotedAt || Date.now()))
+        .setTimestamp(quotedAt)
         .setColor(0x00b06b);
 
       if (quote.image) embed.setImage(quote.image);
