@@ -61,12 +61,16 @@ module.exports = {
     if (sub !== "delete") return;
 
     const focused = interaction.options.getFocused(true).value.toLowerCase();
-    const quotes = getAllQuotesInChannel(interaction.guild.id, interaction.channel.id);
+    const quotes = await getAllQuotesInChannel(
+      interaction.guild.id,
+      interaction.channel.id
+    );
 
     const filtered = quotes
-      .filter((q) =>
-        q.id.toLowerCase().includes(focused) ||
-        q.content.toLowerCase().includes(focused)
+      .filter(
+        (q) =>
+          q.id.toLowerCase().includes(focused) ||
+          q.content.toLowerCase().includes(focused)
       )
       .slice(0, 25)
       .map((q) => ({
@@ -84,7 +88,7 @@ module.exports = {
     const staffRoleIds = config.STAFF_ROLES;
 
     if (sub === "view") {
-      const quote = getRandomQuote({
+      const quote = await getRandomQuote({
         guildId: interaction.guild.id,
         channelId: interaction.channel.id,
         userId: user?.id,
@@ -98,24 +102,30 @@ module.exports = {
           content: user
             ? `❌ No quotes found for **${user.tag}**.`
             : "❌ No quotes found.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       const embed = new EmbedBuilder()
-        .setAuthor({ name: quote.authorTag })
+        .setAuthor({ name: quote.authorTag || "Unknown User" })
         .setTitle("📌 Saved Quote")
-        .setDescription(`"${quote.content}"`)
+        .setDescription(`"${quote.content || "*No content*"}"`)
         .addFields(
-          { name: "Quoted by", value: `<@${quote.quotedById}>`, inline: true },
+          {
+            name: "Quoted by",
+            value: `<@${quote.quotedById || "unknown"}>`,
+            inline: true,
+          },
           {
             name: "Original Date",
-            value: `<t:${Math.floor(new Date(quote.createdAt).getTime() / 1000)}:F>`,
+            value: `<t:${Math.floor(
+              new Date(quote.createdAt || Date.now()).getTime() / 1000
+            )}:F>`,
             inline: true,
           },
           {
             name: "Quote ID",
-            value: quote.id,
+            value: quote.id || "N/A",
             inline: false,
           }
         )
@@ -137,17 +147,21 @@ module.exports = {
       if (!hasStaffRole) {
         return interaction.reply({
           content: "❌ Only staff members can delete quotes.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       const quoteId = interaction.options.getString("id");
-      const success = deleteQuoteById(quoteId);
+      const success = await deleteQuoteById(
+        interaction.guild.id,
+        interaction.channel.id,
+        quoteId
+      );
 
       if (!success) {
         return interaction.reply({
           content: `❌ Quote with ID \`${quoteId}\` not found.`,
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -157,7 +171,7 @@ module.exports = {
 
       return interaction.reply({
         content: `✅ Quote with ID \`${quoteId}\` deleted successfully.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
