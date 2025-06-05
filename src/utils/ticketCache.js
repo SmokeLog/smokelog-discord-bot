@@ -1,11 +1,10 @@
 /**
  * -----------------------------------------------------------
- * SmokeLog - Ticket Cache
+ * SmokeLog - Ticket Cache (Persistent)
  * -----------------------------------------------------------
  *
- * Description: Tracks open ticket channels by user ID.
- *              Prevents duplicates and enables interaction
- *              continuity after bot restarts (optional: disk).
+ * Description: Tracks open ticket channels by user ID using
+ *              Firebase Firestore under `discord/tickets`.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -17,26 +16,38 @@
  * -----------------------------------------------------------
  */
 
-const openTickets = new Map();
+const { db } = require("../lib/firebase");
+const logger = require("./logger");
 
-function hasTicket(userId) {
-  return openTickets.has(userId);
+const COLLECTION_PATH = "discord/tickets";
+
+async function hasTicket(userId) {
+  const doc = await db.collection(COLLECTION_PATH).doc(userId).get();
+  return doc.exists;
 }
 
-function getTicketChannelId(userId) {
-  return openTickets.get(userId);
+async function getTicketChannelId(userId) {
+  const doc = await db.collection(COLLECTION_PATH).doc(userId).get();
+  return doc.exists ? doc.data().channelId : null;
 }
 
-function registerTicket(userId, channelId) {
-  openTickets.set(userId, channelId);
+async function registerTicket(userId, channelId) {
+  await db.collection(COLLECTION_PATH).doc(userId).set({
+    userId,
+    channelId,
+    openedAt: new Date().toISOString(),
+  });
+  logger.info(`🎟️ Registered ticket for ${userId} in channel ${channelId}`);
 }
 
-function closeTicket(userId) {
-  openTickets.delete(userId);
+async function closeTicket(userId) {
+  await db.collection(COLLECTION_PATH).doc(userId).delete();
+  logger.info(`❌ Closed ticket for ${userId}`);
 }
 
-function entries() {
-  return openTickets.entries();
+async function entries() {
+  const snapshot = await db.collection(COLLECTION_PATH).get();
+  return snapshot.docs.map((doc) => [doc.id, doc.data().channelId]);
 }
 
 module.exports = {

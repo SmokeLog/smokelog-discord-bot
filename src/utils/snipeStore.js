@@ -1,14 +1,11 @@
 /**
  * -----------------------------------------------------------
- * SmokeLog - Utility: Snipe Store
+ * SmokeLog - Utility: Snipe Store (Firestore)
  * -----------------------------------------------------------
  *
  * Description: Stores the most recently deleted message per
  *              channel for use with the /snipe command.
  *              Automatically clears after timeout or usage.
- *
- * Usage:
- *   const { saveSnipe, getSnipe, clearSnipe } = require("./snipeStore");
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -20,22 +17,32 @@
  * -----------------------------------------------------------
  */
 
-const snipes = new Map();
-const timeouts = new Map();
+const { db } = require("../lib/firebase");
 const logger = require("./logger");
 
+const timeouts = new Map();
 const SNIPE_LIFETIME = 60_000; // 60 seconds
 
-function saveSnipe(channelId, data) {
+function getSnipeDoc(channelId) {
+  return db
+    .collection("discord")
+    .doc("snipes")
+    .collection("channels")
+    .doc(channelId);
+}
+
+async function saveSnipe(channelId, data) {
+  const doc = getSnipeDoc(channelId);
+  await doc.set(data);
+
+  // Set timeout to auto-clear after SNIPE_LIFETIME
   if (timeouts.has(channelId)) {
     clearTimeout(timeouts.get(channelId));
     timeouts.delete(channelId);
   }
 
-  snipes.set(channelId, data);
-
-  const timeout = setTimeout(() => {
-    snipes.delete(channelId);
+  const timeout = setTimeout(async () => {
+    await doc.delete();
     timeouts.delete(channelId);
     logger.info(`🧹 Cleared expired snipe from channel ${channelId}`);
   }, SNIPE_LIFETIME);
@@ -44,12 +51,13 @@ function saveSnipe(channelId, data) {
   logger.info(`📌 Stored snipe in channel ${channelId} from ${data.authorTag}`);
 }
 
-function getSnipe(channelId) {
-  return snipes.get(channelId);
+async function getSnipe(channelId) {
+  const doc = await getSnipeDoc(channelId).get();
+  return doc.exists ? doc.data() : null;
 }
 
-function clearSnipe(channelId) {
-  snipes.delete(channelId);
+async function clearSnipe(channelId) {
+  await getSnipeDoc(channelId).delete();
   if (timeouts.has(channelId)) {
     clearTimeout(timeouts.get(channelId));
     timeouts.delete(channelId);

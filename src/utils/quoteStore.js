@@ -1,10 +1,10 @@
 /**
  * -----------------------------------------------------------
- * SmokeLog - Utility: Quote Store
+ * SmokeLog - Utility: Quote Store (Firestore)
  * -----------------------------------------------------------
  *
- * Description: Stores saved quotes for use with the
- *              /quote view and /quote delete subcommands.
+ * Description: Stores saved quotes in Firestore for use with
+ *              the /quote view and /quote delete subcommands.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -16,79 +16,59 @@
  * -----------------------------------------------------------
  */
 
-const fs = require("fs");
-const path = require("path");
+const { db } = require("../lib/firebase");
 
-const QUOTES_PATH = path.join(__dirname, "../../data/quotes.json");
-
-let quotes = [];
-
-// Load from JSON at startup
-function loadQuotes() {
-  try {
-    if (fs.existsSync(QUOTES_PATH)) {
-      const data = fs.readFileSync(QUOTES_PATH, "utf8");
-      quotes = JSON.parse(data);
-    } else {
-      quotes = [];
-    }
-  } catch (err) {
-    console.error(`Failed to load quotes: ${err.message}`);
-    quotes = [];
-  }
+// Collection path: discord/quotes/{guildId_channelId}/{quoteId}
+function getQuotesCollection(guildId, channelId) {
+  return db
+    .collection("discord")
+    .doc("quotes")
+    .collection(`${guildId}_${channelId}`);
 }
 
-// Save quotes to JSON
-function saveQuotesToFile() {
-  try {
-    fs.writeFileSync(QUOTES_PATH, JSON.stringify(quotes, null, 2), "utf8");
-  } catch (err) {
-    console.error(`Failed to write quotes: ${err.message}`);
-  }
+// Save a quote
+async function saveQuote(quote) {
+  const col = getQuotesCollection(quote.guildId, quote.channelId);
+  await col.doc(quote.id).set(quote);
 }
 
-// Save a new quote
-function saveQuote(quote) {
-  quotes.push(quote);
-  saveQuotesToFile();
-}
+// Get a random quote
+async function getRandomQuote({ guildId, channelId, userId = null }) {
+  const col = getQuotesCollection(guildId, channelId);
+  const snapshot = await col.get();
 
-// Get a random quote (with optional user filter)
-function getRandomQuote({ guildId, channelId, userId = null }) {
-  const filtered = quotes.filter(
-    (q) =>
-      q.guildId === guildId &&
-      q.channelId === channelId &&
-      (!userId || q.authorId === userId)
-  );
+  if (snapshot.empty) return null;
+
+  const filtered = snapshot.docs
+    .map((doc) => doc.data())
+    .filter((q) => !userId || q.authorId === userId);
 
   if (!filtered.length) return null;
+
   return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
-// Delete a quote by its ID
-function deleteQuoteById(id) {
-  const index = quotes.findIndex((q) => q.id === id);
-  if (index === -1) return false;
+// Delete a quote by ID
+async function deleteQuoteById(guildId, channelId, id) {
+  const col = getQuotesCollection(guildId, channelId);
+  const doc = col.doc(id);
+  const exists = await doc.get();
+  if (!exists.exists) return false;
 
-  quotes.splice(index, 1);
-  saveQuotesToFile();
+  await doc.delete();
   return true;
 }
 
-// Get all quote IDs for a specific channel (used in autocomplete)
-function getAllQuoteIds(guildId, channelId) {
-  return quotes
-    .filter((q) => q.guildId === guildId && q.channelId === channelId)
-    .map((q) => q.id);
+// Get all quotes in a channel (for autocomplete)
+async function getAllQuotesInChannel(guildId, channelId) {
+  const col = getQuotesCollection(guildId, channelId);
+  const snapshot = await col.get();
+  return snapshot.docs.map((doc) => doc.data());
 }
-
-// Init on import
-loadQuotes();
 
 module.exports = {
   saveQuote,
   getRandomQuote,
   deleteQuoteById,
-  getAllQuoteIds,
+  getAllQuotesInChannel,
 };

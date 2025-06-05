@@ -1,10 +1,10 @@
 /**
  * -----------------------------------------------------------
- * SmokeLog - Reminder Storage Utility
+ * SmokeLog - Reminder Storage Utility (Firestore)
  * -----------------------------------------------------------
  *
  * Description: Handles loading, storing, and scheduling reminders
- *              across restarts using a local JSON file.
+ *              across restarts using Firebase Firestore.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -16,37 +16,38 @@
  * -----------------------------------------------------------
  */
 
-const fs = require("fs");
-const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const { EmbedBuilder } = require("discord.js");
 const logger = require("./logger");
+const { db } = require("../lib/firebase");
 
-const filePath = path.resolve("data", "reminders.json");
-let reminders = [];
-const activeTimeouts = {}; // 🧠 Track timeout IDs
+const activeTimeouts = {};
 
-function loadReminders(client) {
-  if (fs.existsSync(filePath)) {
-    const data = fs.readFileSync(filePath);
-    try {
-      reminders = JSON.parse(data);
-      logger.info(`🔁 Loaded ${reminders.length} reminder(s) from disk.`);
-      scheduleReminders(client);
-    } catch (err) {
-      logger.error(`❌ Failed to parse reminders.json: ${err.message}`);
-    }
+async function loadReminders(client) {
+  try {
+    const snapshot = await db
+      .collection("discord")
+      .doc("reminders")
+      .collection("entries")
+      .get();
+    const reminders = snapshot.docs.map((doc) => doc.data());
+
+    logger.info(`🔁 Loaded ${reminders.length} reminder(s) from Firestore.`);
+    reminders.forEach((r) => scheduleSingle(r, client));
+  } catch (err) {
+    logger.error(`❌ Failed to load reminders from Firestore: ${err.message}`);
   }
 }
 
-function saveReminders() {
-  fs.writeFileSync(filePath, JSON.stringify(reminders, null, 2));
-}
-
-function addReminder(reminder, client) {
+async function scheduleReminder(reminder, client) {
   reminder.id = reminder.id || uuidv4();
-  reminders.push(reminder);
-  saveReminders();
+
+  await db
+    .collection("discord")
+    .doc("reminders")
+    .collection("entries")
+    .doc(reminder.id)
+    .set(reminder);
 
   logger.success(
     `⏰ Reminder set for ${reminder.userId} in ${
@@ -80,7 +81,7 @@ async function scheduleSingle(reminder, client) {
         logger.success(
           `🔔 Reminder delivered to ${reminder.userId} in ${reminder.channelId} (ID: ${reminder.id})`
         );
-        removeReminder(reminder.id);
+        await removeReminder(reminder.id);
       } catch (sendErr) {
         logger.error(
           `❌ Failed to send reminder ${reminder.id}: ${sendErr.message}`
@@ -92,7 +93,6 @@ async function scheduleSingle(reminder, client) {
   } catch (err) {
     logger.warn(`⚠️ Could not restore reminder ${reminder.id}: ${err.message}`);
 
-    // Notify the user if possible
     try {
       const user = await client.users.fetch(reminder.userId);
       if (user) {
@@ -121,31 +121,34 @@ async function scheduleSingle(reminder, client) {
   }
 }
 
-function removeReminder(id) {
-  // 🧹 Clear timeout if it exists
+async function removeReminder(id) {
   if (activeTimeouts[id]) {
     clearTimeout(activeTimeouts[id]);
     delete activeTimeouts[id];
   }
 
-  const initial = reminders.length;
-  reminders = reminders.filter((r) => r.id !== id);
-  saveReminders();
-  return reminders.length < initial;
+  await db
+    .collection("discord")
+    .doc("reminders")
+    .collection("entries")
+    .doc(id)
+    .delete();
+
+  logger.info(`🧼 Removed reminder with ID ${id}`);
 }
 
-function getReminders() {
-  return reminders;
-}
-
-function scheduleReminders(client) {
-  reminders.forEach((r) => scheduleSingle(r, client));
+async function getReminders() {
+  const snapshot = await db
+    .collection("discord")
+    .doc("reminders")
+    .collection("entries")
+    .get();
+  return snapshot.docs.map((doc) => doc.data());
 }
 
 module.exports = {
   loadReminders,
-  scheduleReminder: addReminder,
+  scheduleReminder,
   removeReminder,
   getReminders,
-  saveReminders,
 };
