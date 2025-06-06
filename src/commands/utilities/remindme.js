@@ -3,9 +3,10 @@
  * SmokeLog - Slash Command: /remindme
  * -----------------------------------------------------------
  *
- * Description: Create, view, and cancel personal reminders.
- *              Supports duration-based (/in), exact date/time
- *              (/on), same-day (/at), list view, and cancel.
+ * Description: Create, view, cancel, and configure reminders.
+ *              Includes support for durations (/in), exact
+ *              date/time (/on), same-day reminders (/at),
+ *              viewing, cancelling, and timezone setup.
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
@@ -24,7 +25,14 @@ const {
   getReminders,
   removeReminder,
 } = require("../../utils/reminderStore");
+const {
+  getUserTimezone,
+  setUserTimezone,
+} = require("../../utils/timezoneStore");
 const logger = require("../../utils/logger");
+const { DateTime } = require("luxon");
+
+const allTimezones = Intl.supportedValuesOf("timeZone");
 
 function parse12HourTime(timeStr) {
   const match = timeStr.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
@@ -81,8 +89,8 @@ module.exports = {
         .addStringOption((opt) =>
           opt
             .setName("duration")
-            .setDescription("e.g. 10m, 2h")
             .setRequired(true)
+            .setDescription("e.g. 10m, 2h")
         )
         .addStringOption((opt) =>
           opt.setName("message").setDescription("Reminder message")
@@ -95,14 +103,14 @@ module.exports = {
         .addStringOption((opt) =>
           opt
             .setName("date")
-            .setDescription("Date (YYYY-MM-DD)")
             .setRequired(true)
+            .setDescription("Date (YYYY-MM-DD)")
         )
         .addStringOption((opt) =>
           opt
             .setName("time")
-            .setDescription("Time (e.g. 01:30 PM)")
             .setRequired(true)
+            .setDescription("Time (e.g. 01:30 PM)")
         )
         .addStringOption((opt) =>
           opt.setName("message").setDescription("Reminder message")
@@ -115,8 +123,8 @@ module.exports = {
         .addStringOption((opt) =>
           opt
             .setName("time")
-            .setDescription("Time (e.g. 07:00 AM)")
             .setRequired(true)
+            .setDescription("Time (e.g. 07:00 AM)")
         )
         .addStringOption((opt) =>
           opt.setName("message").setDescription("Reminder message")
@@ -128,12 +136,24 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName("cancel")
-        .setDescription("Cancel a reminder by selecting it")
+        .setDescription("Cancel a reminder")
         .addStringOption((opt) =>
           opt
             .setName("reminder")
-            .setDescription("Choose a reminder to cancel")
             .setRequired(true)
+            .setAutocomplete(true)
+            .setDescription("Select reminder")
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("timezone")
+        .setDescription("Set your local timezone")
+        .addStringOption((opt) =>
+          opt
+            .setName("zone")
+            .setRequired(true)
+            .setDescription("Enter your timezone (e.g. America/Los_Angeles)")
             .setAutocomplete(true)
         )
     )
@@ -144,6 +164,38 @@ module.exports = {
     const userId = interaction.user.id;
     const channelId = interaction.channel.id;
     const client = interaction.client;
+
+    if (sub === "timezone") {
+      const zone = interaction.options.getString("zone");
+      if (!allTimezones.includes(zone)) {
+        return interaction.reply({
+          embeds: [
+            reminderEmbed(
+              {
+                title: "❌ Invalid Timezone",
+                description: "Timezone not recognized.",
+                color: 0xff4c4c,
+              },
+              client
+            ),
+          ],
+        });
+      }
+
+      await setUserTimezone(userId, zone);
+      logger.success(`🌍 ${interaction.user.tag} set timezone to ${zone}`);
+      return interaction.reply({
+        embeds: [
+          reminderEmbed(
+            {
+              title: "✅ Timezone Updated",
+              description: `Your timezone has been set to **${zone}**.`,
+            },
+            client
+          ),
+        ],
+      });
+    }
 
     if (sub === "in") {
       const duration = interaction.options.getString("duration");
@@ -171,12 +223,28 @@ module.exports = {
         { userId, channelId, remindAt, message },
         client
       );
-
       logger.success(
         `⏰ ${interaction.user.tag} set reminder in ${duration} (${id})`
       );
-
       return handleReminderCreated(interaction, remindAt, duration, id, "⏰");
+    }
+
+    const timezone = await getUserTimezone(userId);
+    if ((sub === "on" || sub === "at") && !timezone) {
+      return interaction.reply({
+        embeds: [
+          reminderEmbed(
+            {
+              title: "🌍 Timezone Not Set",
+              description:
+                "Please set your timezone first using `/remindme timezone`.",
+              color: 0xff4c4c,
+            },
+            client
+          ),
+        ],
+        ephemeral: true,
+      });
     }
 
     if (sub === "on") {
@@ -185,7 +253,6 @@ module.exports = {
       const message =
         interaction.options.getString("message") || "*No message*";
       const parsed = parse12HourTime(timeStr);
-
       if (!parsed) {
         return interaction.reply({
           embeds: [
@@ -201,13 +268,16 @@ module.exports = {
         });
       }
 
-      const dateObj = new Date(
-        `${dateStr}T${parsed.hour.toString().padStart(2, "0")}:${parsed.minute
-          .toString()
-          .padStart(2, "0")}:00`
-      );
-
-      if (isNaN(dateObj.getTime()) || dateObj <= new Date()) {
+      const dt = DateTime.fromObject({
+        zone: timezone,
+        hour: parsed.hour,
+        minute: parsed.minute,
+      }).set({
+        year: Number(dateStr.slice(0, 4)),
+        month: Number(dateStr.slice(5, 7)),
+        day: Number(dateStr.slice(8)),
+      });
+      if (!dt.isValid || dt.toMillis() <= Date.now()) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
@@ -222,16 +292,14 @@ module.exports = {
         });
       }
 
-      const remindAt = dateObj.getTime();
+      const remindAt = dt.toMillis();
       const id = await scheduleReminder(
         { userId, channelId, remindAt, message },
         client
       );
-
       logger.success(
         `📅 ${interaction.user.tag} set reminder for ${dateStr} ${timeStr} (${id})`
       );
-
       return handleReminderCreated(
         interaction,
         remindAt,
@@ -246,14 +314,13 @@ module.exports = {
       const message =
         interaction.options.getString("message") || "*No message*";
       const parsed = parse12HourTime(timeStr);
-
       if (!parsed) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
               {
                 title: "❌ Invalid Time Format",
-                description: "Use `07:00 AM` format.",
+                description: "Use `07:00 PM` format.",
                 color: 0xff4c4c,
               },
               client
@@ -262,17 +329,14 @@ module.exports = {
         });
       }
 
-      const now = new Date();
-      const dateObj = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        parsed.hour,
-        parsed.minute,
-        0
-      );
-
-      if (isNaN(dateObj.getTime()) || dateObj <= new Date()) {
+      const now = DateTime.now().setZone(timezone);
+      const dt = now.set({
+        hour: parsed.hour,
+        minute: parsed.minute,
+        second: 0,
+        millisecond: 0,
+      });
+      if (dt.toMillis() <= Date.now()) {
         return interaction.reply({
           embeds: [
             reminderEmbed(
@@ -287,16 +351,14 @@ module.exports = {
         });
       }
 
-      const remindAt = dateObj.getTime();
+      const remindAt = dt.toMillis();
       const id = await scheduleReminder(
         { userId, channelId, remindAt, message },
         client
       );
-
       logger.success(
         `⏱️ ${interaction.user.tag} set reminder at ${timeStr} today (${id})`
       );
-
       return handleReminderCreated(interaction, remindAt, timeStr, id, "⏱️");
     }
 
@@ -304,7 +366,6 @@ module.exports = {
       const reminders = (await getReminders()).filter(
         (r) => r.userId === userId
       );
-
       if (reminders.length === 0) {
         return interaction.reply({
           embeds: [
@@ -327,7 +388,6 @@ module.exports = {
             }`
         )
         .join("\n");
-
       logger.info(`📋 ${interaction.user.tag} viewed reminders`);
       return interaction.reply({
         embeds: [
@@ -345,7 +405,6 @@ module.exports = {
       const reminder = reminders.find(
         (r) => r.userId === userId && r.id === id
       );
-
       if (!reminder) {
         return interaction.reply({
           embeds: [
@@ -362,7 +421,6 @@ module.exports = {
       }
 
       await removeReminder(reminder.id);
-
       logger.success(`🗑️ ${interaction.user.tag} cancelled reminder ${id}`);
       return interaction.reply({
         embeds: [
@@ -379,25 +437,33 @@ module.exports = {
   },
 
   async autocomplete(interaction) {
-    if (interaction.options.getSubcommand() !== "cancel") return;
-
-    const reminders = (await getReminders()).filter(
-      (r) => r.userId === interaction.user.id
-    );
-
+    const sub = interaction.options.getSubcommand();
     const focused = interaction.options.getFocused(true);
-    const choices = reminders
-      .slice(0, 25)
-      .map((r) => ({
-        name: `${r.message || "*No message*"} – ${new Date(
-          r.remindAt
-        ).toLocaleString()}`,
-        value: r.id,
-      }))
-      .filter((choice) =>
-        choice.name.toLowerCase().includes(focused.value.toLowerCase())
-      );
 
-    await interaction.respond(choices);
+    if (sub === "cancel") {
+      const reminders = (await getReminders()).filter(
+        (r) => r.userId === interaction.user.id
+      );
+      const choices = reminders
+        .slice(0, 25)
+        .map((r) => ({
+          name: `${r.message || "*No message*"} – ${new Date(
+            r.remindAt
+          ).toLocaleString()}`,
+          value: r.id,
+        }))
+        .filter((choice) =>
+          choice.name.toLowerCase().includes(focused.value.toLowerCase())
+        );
+      return interaction.respond(choices);
+    }
+
+    if (sub === "timezone") {
+      const choices = allTimezones
+        .filter((tz) => tz.toLowerCase().includes(focused.value.toLowerCase()))
+        .slice(0, 25)
+        .map((tz) => ({ name: tz, value: tz }));
+      return interaction.respond(choices);
+    }
   },
 };
