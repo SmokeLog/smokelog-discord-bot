@@ -7,7 +7,6 @@
  *
  * Created by: GarlicRot
  * GitHub: https://github.com/GarlicRot
- * SmokeLog GitHub: https://github.com/SmokeLog
  * Website: https://www.smokelog.org
  *
  * -----------------------------------------------------------
@@ -15,7 +14,7 @@
  * -----------------------------------------------------------
  */
 
-const { db } = require("./firebase");
+const { db } = require("../lib/firebase");
 const logger = require("./logger");
 
 const COLLECTION_NAME = "user_timezones";
@@ -28,11 +27,9 @@ const COLLECTION_NAME = "user_timezones";
 async function setUserTimezone(userId, timezone) {
   try {
     await db.collection(COLLECTION_NAME).doc(userId).set({ timezone });
-    logger.info(`🕒 Saved timezone for user ${userId}: ${timezone}`);
+    logger.success(`🕓 Timezone saved for ${userId}: ${timezone}`);
   } catch (error) {
-    logger.error(
-      `❌ Failed to save timezone for user ${userId}: ${error.message}`
-    );
+    logger.error(`❌ Failed to save timezone for ${userId}: ${error.message}`);
   }
 }
 
@@ -45,16 +42,10 @@ async function getUserTimezone(userId) {
   try {
     const doc = await db.collection(COLLECTION_NAME).doc(userId).get();
     const timezone = doc.exists ? doc.data().timezone : null;
-    logger.info(
-      timezone
-        ? `🕒 Retrieved timezone for user ${userId}: ${timezone}`
-        : `🕒 No timezone set for user ${userId}`
-    );
+    logger.info(`🕓 Retrieved timezone for ${userId}: ${timezone || "none"}`);
     return timezone;
   } catch (error) {
-    logger.error(
-      `❌ Failed to get timezone for user ${userId}: ${error.message}`
-    );
+    logger.error(`❌ Failed to get timezone for ${userId}: ${error.message}`);
     return null;
   }
 }

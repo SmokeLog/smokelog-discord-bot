@@ -64,7 +64,7 @@ async function handleExecution(interaction, command, typeLabel = "command") {
     console.error(`❌ ${typeLabel} error:`, error);
     const reply = {
       content: `❌ There was an error while executing this ${typeLabel}.`,
-      ephemeral: true,
+      flags: 64,
     };
 
     if (interaction.replied || interaction.deferred) {

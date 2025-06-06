@@ -243,7 +243,7 @@ module.exports = {
             client
           ),
         ],
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -268,15 +268,16 @@ module.exports = {
         });
       }
 
-      const dt = DateTime.fromObject({
-        zone: timezone,
-        hour: parsed.hour,
-        minute: parsed.minute,
-      }).set({
-        year: Number(dateStr.slice(0, 4)),
-        month: Number(dateStr.slice(5, 7)),
-        day: Number(dateStr.slice(8)),
-      });
+      const dt = DateTime.fromObject(
+        {
+          year: Number(dateStr.slice(0, 4)),
+          month: Number(dateStr.slice(5, 7)),
+          day: Number(dateStr.slice(8)),
+          hour: parsed.hour,
+          minute: parsed.minute,
+        },
+        { zone: timezone }
+      );
       if (!dt.isValid || dt.toMillis() <= Date.now()) {
         return interaction.reply({
           embeds: [

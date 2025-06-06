@@ -108,7 +108,7 @@ module.exports = {
         return await interaction.reply({
           content:
             "❌ I don't have permission to create a ticket in the bug submission area. Please contact staff.",
-          flags: MessageFlags.Ephemeral,
+          flags: 64,
         });
       }
 
@@ -184,7 +184,7 @@ module.exports = {
         content: `✅ Your ${typeLabel.toLowerCase()} report has been created: <#${
           ticketChannel.id
         }>`,
-        flags: MessageFlags.Ephemeral,
+        flags: 64,
       });
     }
 
@@ -199,7 +199,7 @@ module.exports = {
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
             content: "❌ You do not have permission to close this ticket.",
-            flags: MessageFlags.Ephemeral,
+            flags: 64,
           });
         }
         return;

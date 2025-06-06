@@ -144,7 +144,7 @@ module.exports = {
 
       await interaction.reply({
         content: `✅ Your support ticket has been created: <#${ticketChannel.id}>`,
-        flags: MessageFlags.Ephemeral,
+        flags: 64,
       });
 
       logger.info(`Posted support embed for ${user.tag} in ${channelName}`);
@@ -161,7 +161,7 @@ module.exports = {
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
             content: "❌ You do not have permission to close this ticket.",
-            flags: MessageFlags.Ephemeral,
+            flags: 64,
           });
         }
         return;
