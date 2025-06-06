@@ -45,7 +45,7 @@ module.exports = {
           name: "📊 Stats & Leaderboards",
           value:
             "`/stats` – View your own or another user's session stats\n" +
-            "`/leaderboards` – Show the top users overall\n" +
+            "`/leaderboards overall` – Show the top users overall\n" +
             "`/leaderboards concentrates` – Top concentrate users\n" +
             "`/leaderboards flower` – Top flower users\n" +
             "`/leaderboards carts` – Top cart users",
@@ -57,7 +57,8 @@ module.exports = {
             "`/remindme at` – Set a reminder at a time today (e.g. 07:00 PM)\n" +
             "`/remindme on` – Set a reminder on a date & time (e.g. 2025-06-01 at 01:30 PM)\n" +
             "`/remindme view` – View your active reminders\n" +
-            "`/remindme cancel` – Cancel an active reminder",
+            "`/remindme cancel` – Cancel an active reminder\n" +
+            "`/remindme timezone` – Set your timezone (used for /at and /on)",
         },
         {
           name: "🔍 Message Tools",
