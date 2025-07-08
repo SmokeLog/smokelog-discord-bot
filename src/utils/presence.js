@@ -38,8 +38,6 @@ function rotatePresence(client) {
     activities: [{ name: presence.name, type: presence.type }],
     status: "online",
   });
-
-  logger.info(`🎯 Rotated presence to: ${presence.name}`);
 }
 
 function startPresenceRotation(client, interval = 1800000) {
