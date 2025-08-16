@@ -28,11 +28,37 @@ const { db } = require("../../lib/firebase");
 const config = require("../../config");
 const logger = require("../../utils/logger");
 
+function normCode(s) {
+  return String(s || "").trim().toUpperCase();
+}
+
+function buildPossibleDiscordIds(user) {
+  // Snowflake
+  const snowflake = String(user.id);
+
+  // Legacy tag (username#1234) — many users no longer have discriminators, but keep for safety
+  const legacyTag =
+    user.discriminator && user.discriminator !== "0"
+      ? `${user.username}#${user.discriminator}`
+      : null;
+
+  // Compact form like "Name1234" (what your site currently saved)
+  const compact =
+    user.discriminator && user.discriminator !== "0"
+      ? `${user.username}${user.discriminator}`
+      : `${user.username}${user.globalName ? "" : ""}`;
+
+  // Plain username (last resort)
+  const plain = user.username;
+
+  // Case-insensitive matching for non-snowflake forms
+  const out = new Set([snowflake, compact?.toLowerCase(), legacyTag?.toLowerCase(), plain?.toLowerCase()].filter(Boolean));
+  return { snowflake, all: out };
+}
+
 module.exports = async function handleVerificationModal(interaction) {
-  if (
-    interaction.isButton() &&
-    interaction.customId === "openVerificationModal"
-  ) {
+  // Open modal
+  if (interaction.isButton() && interaction.customId === "openVerificationModal") {
     const modal = new ModalBuilder()
       .setCustomId("submitVerificationCode")
       .setTitle("Enter Your Verification Code");
@@ -48,79 +74,97 @@ module.exports = async function handleVerificationModal(interaction) {
     return interaction.showModal(modal);
   }
 
-  if (
-    interaction.isModalSubmit() &&
-    interaction.customId === "submitVerificationCode"
-  ) {
-    await interaction.deferReply({ flags: 64 });
+  // Handle modal submit
+  if (interaction.isModalSubmit() && interaction.customId === "submitVerificationCode") {
+    await interaction.deferReply({ flags: 64 }); // ephemeral
 
-    const submittedCode = interaction.fields
-      .getTextInputValue("verificationCode")
-      .toUpperCase();
-    const discordId = interaction.user.id;
+    const submittedCode = normCode(
+      interaction.fields.getTextInputValue("verificationCode")
+    );
+
+    const { snowflake, all: possibleIds } = buildPossibleDiscordIds(interaction.user);
 
     try {
       const usersRef = db.collection("users");
       const snapshot = await usersRef.get();
 
       let matchedRef = null;
+      let matchedDocOwner = null;
 
+      // NOTE: We scan users/*/verification/discord. If this gets large,
+      // consider a collectionGroup query with indexes (verification where code== and verified==false).
       for (const docSnap of snapshot.docs) {
-        const verificationRef = docSnap.ref
-          .collection("verification")
-          .doc("discord");
+        const verificationRef = docSnap.ref.collection("verification").doc("discord");
         const verificationSnap = await verificationRef.get();
-
         if (!verificationSnap.exists) continue;
 
         const v = verificationSnap.data();
+        const storedCode = normCode(v.code);
+        const storedId = String(v.discordId || "").trim();
 
-        if (
-          v &&
-          v.code === submittedCode &&
-          v.discordId === discordId &&
-          !v.verified
-        ) {
+        const idMatches =
+          possibleIds.has(storedId) || // match non-snowflake (case-insensitive bucket)
+          storedId === snowflake;      // exact snowflake match
+
+        if (storedCode === submittedCode && idMatches && !v.verified) {
           matchedRef = verificationRef;
+          matchedDocOwner = docSnap.id;
           break;
         }
       }
 
       if (!matchedRef) {
+        logger.warning(
+          `Verify failed: no matching doc for user=${snowflake} code=${submittedCode}`
+        );
         return interaction.editReply({
           content:
-            "❌ Code not found or already verified. Please check your code or try again.",
+            "❌ Code not found or already verified. Please check your code and try again.",
         });
       }
 
-      await matchedRef.update({
-        verified: true,
-        verifiedAt: new Date(),
-      });
+      // Mark verified; also backfill the canonical snowflake
+      await matchedRef.set(
+        {
+          verified: true,
+          verifiedAt: new Date(),
+          discordId: snowflake, // backfill canonical form
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
 
       // ✅ Update Discord roles
       const verifiedRole = config.VERIFICATION.VERIFIED_ROLE;
       const unverifiedRole = config.VERIFICATION.NOT_VERIFIED_ROLE;
 
       try {
-        await interaction.member.roles.add(verifiedRole);
-        await interaction.member.roles.remove(unverifiedRole);
-        logger.success(`Updated roles for verified user ${discordId}`);
+        // Fetch fresh member to avoid partial payload issues
+        const member =
+          (await interaction.guild.members
+            .fetch(snowflake)
+            .catch(() => null)) || interaction.member;
+
+        if (!member) throw new Error("Member not found in guild.");
+
+        await member.roles.add(verifiedRole);
+        await member.roles.remove(unverifiedRole);
+        logger.success(
+          `Verified and updated roles for user=${snowflake} (docOwner=${matchedDocOwner})`
+        );
       } catch (roleErr) {
         logger.error(
-          `Failed to update roles for ${discordId}: ${roleErr.message}`
+          `Role update failed for user=${snowflake}: ${roleErr.message}`
         );
       }
 
       await interaction.editReply({
         content: "✅ You’ve been successfully verified! Welcome!",
       });
-
-      logger.success(`Verified Discord user ${discordId}`);
     } catch (error) {
-      logger.error("Verification error:", error);
+      logger.error(`Verification handler error: ${error.stack || error}`);
       return interaction.editReply({
-        content: "🚨 Something went wrong while verifying. Try again later.",
+        content: "🚨 Something went wrong while verifying. Please try again later.",
       });
     }
   }
