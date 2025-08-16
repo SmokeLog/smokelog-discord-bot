@@ -101,10 +101,11 @@ module.exports = async function handleVerificationModal(interaction) {
         const v = verificationSnap.data();
         const storedCode = normCode(v.code);
         const storedId = String(v.discordId || "").trim();
+        const storedIdLc = storedId.toLowerCase(); // <-- normalize for non-snowflake comparisons
 
         const idMatches =
-          possibleIds.has(storedId) || // match non-snowflake (case-insensitive bucket)
-          storedId === snowflake;      // exact snowflake match
+          possibleIds.has(storedIdLc) || // case-insensitive match for username/tag forms
+          storedId === snowflake;        // exact snowflake match
 
         if (storedCode === submittedCode && idMatches && !v.verified) {
           matchedRef = verificationRef;
