@@ -1,3 +1,4 @@
+
 <h1 align="center">
   <a href="https://github.com/SmokeLog">
     <img src="https://github.com/SmokeLog.png?size=200" width="200" alt="SmokeLog">
@@ -48,3 +49,8 @@ Report bugs and request features here:
 ## License
 
 MIT License © SmokeLog
+
+<p align="center">
+  <img src="https://github.com/GarlicRot.png?size=40" width="40" height="40" alt="GarlicRot"> </br>
+  <span> Developed & Maintained by <a href="https://github.com/GarlicRot">GarlicRot</a></span>
+</p>
